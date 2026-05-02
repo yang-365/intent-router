@@ -2,14 +2,18 @@
 
 Intent Router MVP for intent registration, intent recognition, task dispatching, and SSE task state delivery.
 
+Includes a **掌银智能助手** (Mobile Banking Intelligent Assistant) that supports user intent recognition, task planning, skill-based parameter extraction, and API tool calling for common banking operations.
+
 ## Project Structure
 
 - `backend/`: FastAPI services, router core, admin API, tests
+  - `backend/src/skills/`: Skill framework for parameter extraction and business workflow execution
+  - `backend/src/api_tools/`: API tool layer for simulating business API calls
+  - `backend/src/intent_agents/`: Intent agent services (transfer, bill payment, fund recommendation, consultation, menu navigation)
 - `frontend/`: chat web, admin web, shared packages
 - `docs/`: product and architecture docs
 - `k8s/`: deployment manifests
 - `scripts/`: local verification and cluster helper scripts
-- `design/`: flow diagrams
 
 ## Target Service Topology
 
@@ -51,6 +55,7 @@ Router and agents support OpenAI-compatible model access via `langchain`:
 
 - Router recognizer: `router_core`
 - Built-in agents: `intent_agents.order_status_app`, `intent_agents.cancel_appointment_app`, `intent_agents.fallback_app`
+- Banking agents: `intent_agents.bill_payment_app`, `intent_agents.fund_recommendation_app`, `intent_agents.consultation_app`, `intent_agents.menu_recognition_app`
 
 Minimum runtime env:
 
@@ -107,7 +112,16 @@ Run built-in agents:
 ```bash
 uvicorn intent_agents.order_status_app:app --app-dir backend/src --reload --port 8101
 uvicorn intent_agents.cancel_appointment_app:app --app-dir backend/src --reload --port 8102
-uvicorn intent_agents.fallback_app:app --app-dir backend/src --reload --port 8103
+```
+
+Run banking assistant agents:
+
+```bash
+uvicorn intent_agents.bill_payment_app:app --app-dir backend/src --reload --port 8103
+uvicorn intent_agents.fund_recommendation_app:app --app-dir backend/src --reload --port 8104
+uvicorn intent_agents.consultation_app:app --app-dir backend/src --reload --port 8105
+uvicorn intent_agents.menu_recognition_app:app --app-dir backend/src --reload --port 8106
+uvicorn intent_agents.fallback_app:app --app-dir backend/src --reload --port 8107
 ```
 
 Run tests:
@@ -129,3 +143,45 @@ npm install
 npm run dev:chat
 npm run dev:admin
 ```
+
+## Banking Assistant Architecture
+
+The banking assistant extends the intent router with three layers:
+
+### Skills Layer (`backend/src/skills/`)
+
+Skills handle parameter extraction and business workflow orchestration. Each skill defines:
+- **Slot definitions**: Required parameters with types and descriptions
+- **Extract logic**: Rule-based slot extraction from user input
+- **Execute logic**: Business workflow execution via API tools
+
+Built-in skills:
+| Skill Code | Name | Description |
+|---|---|---|
+| `transfer_money` | 转账 | Collects recipient info and amount, executes transfer |
+| `bill_payment` | 生活缴费 | Handles utility bill payments (electricity, water, gas, phone) |
+| `fund_recommendation` | 基金推荐 | Recommends funds based on risk preference |
+| `consultation` | 业务咨询 | Answers common banking FAQ questions |
+| `menu_recognition` | 菜单导航 | Navigates users to the right feature/menu |
+
+### API Tools Layer (`backend/src/api_tools/`)
+
+Tools simulate actual business API calls. Each tool defines parameters, validation, and execution logic.
+
+Built-in tools:
+| Tool Code | Name | Description |
+|---|---|---|
+| `transfer_api` | 转账接口 | Simulates bank transfer operations |
+| `bill_payment_api` | 缴费接口 | Simulates utility bill payments |
+| `fund_query_api` | 基金查询接口 | Queries and recommends fund products |
+| `account_query_api` | 账户查询接口 | Queries account balance |
+
+### Assistant API Endpoints
+
+The router exposes assistant endpoints under `/api/router/assistant/`:
+
+- `GET /api/router/assistant/skills` — List all available skills
+- `GET /api/router/assistant/tools` — List all available API tools
+- `POST /api/router/assistant/skills/{skill_code}/extract` — Extract slots from user input
+- `POST /api/router/assistant/skills/{skill_code}/execute` — Execute a skill with extracted parameters
+- `POST /api/router/assistant/tools/{tool_code}/call` — Directly call an API tool
