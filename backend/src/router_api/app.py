@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from admin_api.dependencies import get_settings
 from router_api.dependencies import build_router_runtime, close_router_runtime, run_intent_catalog_refresh
+from router_api.routes.assistant import router as assistant_router
 from router_api.routes.sessions import router as session_router
 
 
@@ -55,6 +56,7 @@ def create_router_app() -> FastAPI:
         return await health()
 
     app.include_router(session_router)
+    app.include_router(assistant_router)
     return app
 
 
